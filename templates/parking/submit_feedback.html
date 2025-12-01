@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Feedback - Smart Park System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3>Submit Feedback</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h4>{{ booking.parking_space.title }}</h4>
+                    <p><strong>Owner:</strong> {{ booking.booking_owner.username }}</p>
+                    <p><strong>Date:</strong> {{ booking.start_time.strftime('%Y-%m-%d') }}</p>
+                    <p><strong>Time:</strong> {{ booking.start_time.strftime('%H:%M') }} - {{ booking.end_time.strftime('%H:%M') }}</p>
+                </div>
+                
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Rating</label>
+                        <div class="rating-stars">
+                            {% for i in range(1, 6) %}
+                                <span class="star" data-rating="{{ i }}">★</span>
+                            {% endfor %}
+                        </div>
+                        {{ form.rating(class="form-control d-none") }}
+                        {% if form.rating.errors %}
+                            <div class="text-danger">
+                                {% for error in form.rating.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.comment.label(class="form-label") }}
+                        {{ form.comment(class="form-control", rows="4") }}
+                        {% if form.comment.errors %}
+                            <div class="text-danger">
+                                {% for error in form.comment.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('parking.my_bookings') }}" class="btn btn-secondary">Cancel</a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-stars .star {
+    font-size: 2rem;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.rating-stars .star:hover,
+.rating-stars .star.active {
+    color: #ffc107;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.rating-stars .star');
+    const ratingInput = document.getElementById('rating');
+    
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = this.getAttribute('data-rating');
+            ratingInput.value = rating;
+            
+            // Update star classes
+            stars.forEach(s => {
+                if (s.getAttribute('data-rating') <= rating) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

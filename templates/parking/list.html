@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Parking Spaces - Smart Park System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Available Parking Spaces</h2>
+    {% if current_user.is_authenticated %}
+        <a href="{{ url_for('parking.add_space') }}" class="btn btn-primary">Add New Space</a>
+    {% endif %}
+</div>
+
+<!-- Search and Filter Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('parking.list_spaces') }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           placeholder="Search by title, description, or address" 
+                           value="{{ search_query or '' }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="min_price" class="form-label">Min Price ($)</label>
+                    <input type="number" class="form-control" id="min_price" name="min_price" 
+                           step="0.01" min="0" placeholder="0.00"
+                           value="{{ min_price or '' }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="max_price" class="form-label">Max Price ($)</label>
+                    <input type="number" class="form-control" id="max_price" name="max_price" 
+                           step="0.01" min="0" placeholder="100.00"
+                           value="{{ max_price or '' }}">
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                <a href="{{ url_for('parking.list_spaces') }}" class="btn btn-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if spaces %}
+    <div class="row">
+        {% for space in spaces %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    {% if space.images and space.images|length > 0 %}
+                        <!-- Placeholder for image -->
+                        <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                            <span class="text-muted">Parking Image</span>
+                        </div>
+                    {% else %}
+                        <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                            <span class="text-muted">No Image Available</span>
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ space.title }}</h5>
+                        <p class="card-text">{{ space.description[:100] }}{% if space.description|length > 100 %}...{% endif %}</p>
+                        <p class="card-text"><strong>Address:</strong> {{ space.address }}</p>
+                        <p class="card-text"><strong>Price:</strong> ${{ "%.2f"|format(space.price_per_hour) }} per hour</p>
+                        <p class="card-text">
+                            <strong>Availability:</strong> 
+                            {{ space.availability_start.strftime('%H:%M') }} - {{ space.availability_end.strftime('%H:%M') }}
+                        </p>
+                        <a href="{{ url_for('parking.view_space', space_id=space.id) }}" class="btn btn-primary">View Details</a>
+                    </div>
+                    <div class="card-footer">
+                        <small class="text-muted">Listed by {{ space.owner.username }}</small>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <h4>No parking spaces available at the moment</h4>
+        <p class="text-muted">Check back later or be the first to list a parking space!</p>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('parking.add_space') }}" class="btn btn-primary">List Your Space</a>
+        {% else %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Register to List Space</a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

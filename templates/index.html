@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container text-center hero-content">
+        <h1 class="display-4">Welcome to Smart Park System</h1>
+        <p class="lead">Connect with unused parking spaces nearby and rent them for your convenience. Save time, save money, and reduce traffic congestion.</p>
+        {% if not current_user.is_authenticated %}
+            <a class="btn btn-primary btn-lg me-3" href="{{ url_for('auth.register') }}" role="button">Get Started</a>
+            <a class="btn btn-accent btn-lg" href="{{ url_for('auth.login') }}" role="button">Login</a>
+        {% else %}
+            <a class="btn btn-primary btn-lg" href="{{ url_for('parking.list_spaces') }}" role="button">Find Parking Spaces</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Find Parking</h5>
+                <p class="card-text">Search for available parking spaces near your destination.</p>
+                <a href="{{ url_for('parking.list_spaces') }}" class="btn btn-primary">Browse Spaces</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">List Your Space</h5>
+                <p class="card-text">Earn money by listing your unused parking space.</p>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('parking.add_space') }}" class="btn btn-primary">Add Space</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login to Add</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Manage Bookings</h5>
+                <p class="card-text">View and manage your parking reservations.</p>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('parking.my_bookings') }}" class="btn btn-primary">My Bookings</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login to View</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="steps-section bg-white">
+    <div class="container">
+        <h2 class="text-center mb-5">How It Works</h2>
+        <div class="row">
+            <div class="col-md-3 mb-4">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h5>Register</h5>
+                    <p>Create an account as a parking space owner or customer.</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h5>List or Search</h5>
+                    <p>Owners list spaces, customers search for available spots.</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h5>Book & Confirm</h5>
+                    <p>Request booking and wait for owner confirmation.</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <h5>Park & Pay</h5>
+                    <p>Park your vehicle and complete the payment process.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
