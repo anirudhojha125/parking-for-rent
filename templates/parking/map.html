@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Parking Map - Smart Park System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Parking Spaces Map</h2>
+    <button id="getLocationBtn" class="btn btn-primary">Share My Location</button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div id="map" style="height: 500px;"></div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <h3>Nearby Parking Spaces</h3>
+    <div class="row" id="parkingSpacesList">
+        {% if spaces %}
+            {% for space in spaces %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        {% if space.images and space.images|length > 0 %}
+                            <!-- Display the primary image or first image if no primary is set -->
+                            {% set primary_image = space.images|selectattr('is_primary')|first %}
+                            {% if not primary_image %}
+                                {% set primary_image = space.images|first %}
+                            {% endif %}
+                            {% if primary_image %}
+                                <img src="{{ primary_image.image_url }}" class="card-img-top" alt="{{ space.title }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                    <span class="text-muted">No Image Available</span>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                <span class="text-muted">No Image Available</span>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ space.title }}</h5>
+                            <p class="card-text">{{ space.address }}</p>
+                            <p class="card-text"><strong>Price:</strong> ₹{{ "%.2f"|format(space.price_per_hour) }} per hour</p>
+                            {% set owner_rating = space.owner.get_average_rating() %}
+                            {% if owner_rating %}
+                                <p class="card-text">
+                                    <strong>Owner Rating:</strong> 
+                                    <span class="badge bg-warning">
+                                        ★ {{ "%.1f"|format(owner_rating) }} ({{ space.owner.get_total_ratings() }} ratings)
+                                    </span>
+                                </p>
+                            {% endif %}
+                            <a href="{{ url_for('parking.view_space', space_id=space.id) }}" class="btn btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No parking spaces with location data available.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var map;
+    var userMarker;
+    var spaceMarkers = [];
+    
+    // Initialize the map when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Create map centered on Pune, India by default (can be changed to user's location)
+        map = L.map('map').setView([18.5204, 73.8567], 13);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        // Add a default marker
+        L.marker([18.5204, 73.8567]).addTo(map)
+            .bindPopup('Default Location')
+            .openPopup();
+        
+        // Load parking spaces
+        loadParkingSpaces();
+    });
+    
+    function loadParkingSpaces() {
+        fetch('{{ url_for("parking.api_parking_spaces") }}')
+            .then(response => response.json())
+            .then(data => {
+                // Clear existing markers
+                spaceMarkers.forEach(marker => map.removeLayer(marker));
+                spaceMarkers = [];
+                
+                // Add markers for each parking space
+                data.forEach(space => {
+                    if (space.latitude && space.longitude) {
+                        var marker = L.marker([space.latitude, space.longitude]).addTo(map);
+                        marker.bindPopup(`
+                            <div>
+                                <h6>${space.title}</h6>
+                                <p>${space.address}</p>
+                                <p><strong>Price:</strong> ₹${space.price_per_hour.toFixed(2)}/hour</p>
+                                <p><strong>Owner:</strong> ${space.owner_username}</p>
+                                ${space.owner_rating ? `<p><strong>Rating:</strong> ★ ${space.owner_rating.toFixed(1)} (${space.owner_total_ratings} ratings)</p>` : ''}
+                                <a href="/parking/space/${space.id}" class="btn btn-sm btn-primary">View Details</a>
+                            </div>
+                        `);
+                        
+                        spaceMarkers.push(marker);
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading parking spaces:', error));
+    }
+    
+    document.getElementById('getLocationBtn').addEventListener('click', function() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    var pos = [position.coords.latitude, position.coords.longitude];
+                    
+                    // Center map on user location
+                    map.setView(pos, 15);
+                    
+                    // Remove existing user marker if present
+                    if (userMarker) {
+                        map.removeLayer(userMarker);
+                    }
+                    
+                    // Add marker for user location
+                    userMarker = L.marker(pos).addTo(map)
+                        .bindPopup('Your Current Location')
+                        .openPopup();
+                    
+                    // Send location to server
+                    fetch('{{ url_for("parking.update_user_location") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert('Your location has been shared successfully!');
+                    })
+                    .catch(error => {
+                        console.error('Error updating location:', error);
+                        alert('Failed to share your location.');
+                    });
+                },
+                function() {
+                    alert('Error: The Geolocation service failed.');
+                }
+            );
+        } else {
+            alert('Error: Your browser doesn\'t support geolocation.');
+        }
+    });
+    
+    // Reload spaces every 30 seconds
+    setInterval(loadParkingSpaces, 30000);
+</script>
+{% endblock %}

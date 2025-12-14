@@ -10,7 +10,7 @@
                 <h3>Edit Parking Space</h3>
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-3">
@@ -81,6 +81,7 @@
                     <div class="mb-3">
                         {{ form.price_per_hour.label(class="form-label") }}
                         {{ form.price_per_hour(class="form-control") }}
+                        <div class="form-text">Enter the price in Indian Rupees (₹) per hour</div>
                         {% if form.price_per_hour.errors %}
                             <div class="text-danger">
                                 {% for error in form.price_per_hour.errors %}
@@ -127,6 +128,24 @@
                                 {% for error in form.is_active.errors %}
                                     <small>{{ error }}</small>
                                 {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.images.label(class="form-label") }}
+                        {{ form.images(class="form-control") }}
+                        <div class="form-text">You can select multiple images. Supported formats: JPG, PNG, GIF</div>
+                        {% if space.images and space.images|length > 0 %}
+                            <div class="mt-2">
+                                <strong>Current Images:</strong>
+                                <div class="row mt-2">
+                                    {% for image in space.images %}
+                                        <div class="col-md-3 mb-2">
+                                            <img src="{{ image.image_url }}" class="img-thumbnail" style="height: 100px; width: 100px; object-fit: cover;" alt="Parking space image">
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             </div>
                         {% endif %}
                     </div>

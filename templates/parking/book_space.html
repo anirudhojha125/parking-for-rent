@@ -13,7 +13,7 @@
                 <div class="mb-4">
                     <h4>{{ space.title }}</h4>
                     <p><strong>Address:</strong> {{ space.address }}</p>
-                    <p><strong>Price:</strong> ${{ "%.2f"|format(space.price_per_hour) }} per hour</p>
+                    <p><strong>Price:</strong> ₹{{ "%.2f"|format(space.price_per_hour) }} per hour</p>
                     <p><strong>Availability:</strong> {{ space.availability_start.strftime('%H:%M') }} - {{ space.availability_end.strftime('%H:%M') }}</p>
                 </div>
                 

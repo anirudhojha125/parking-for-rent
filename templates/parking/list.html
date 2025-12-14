@@ -22,13 +22,13 @@
                            value="{{ search_query or '' }}">
                 </div>
                 <div class="col-md-3 mb-3">
-                    <label for="min_price" class="form-label">Min Price ($)</label>
+                    <label for="min_price" class="form-label">Min Price (₹)</label>
                     <input type="number" class="form-control" id="min_price" name="min_price" 
                            step="0.01" min="0" placeholder="0.00"
                            value="{{ min_price or '' }}">
                 </div>
                 <div class="col-md-3 mb-3">
-                    <label for="max_price" class="form-label">Max Price ($)</label>
+                    <label for="max_price" class="form-label">Max Price (₹)</label>
                     <input type="number" class="form-control" id="max_price" name="max_price" 
                            step="0.01" min="0" placeholder="100.00"
                            value="{{ max_price or '' }}">
@@ -48,10 +48,18 @@
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     {% if space.images and space.images|length > 0 %}
-                        <!-- Placeholder for image -->
-                        <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
-                            <span class="text-muted">Parking Image</span>
-                        </div>
+                        <!-- Display the primary image or first image if no primary is set -->
+                        {% set primary_image = space.images|selectattr('is_primary')|first %}
+                        {% if not primary_image %}
+                            {% set primary_image = space.images|first %}
+                        {% endif %}
+                        {% if primary_image %}
+                            <img src="{{ primary_image.image_url }}" class="card-img-top" alt="{{ space.title }}" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                <span class="text-muted">No Image Available</span>
+                            </div>
+                        {% endif %}
                     {% else %}
                         <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
                             <span class="text-muted">No Image Available</span>
@@ -61,11 +69,20 @@
                         <h5 class="card-title">{{ space.title }}</h5>
                         <p class="card-text">{{ space.description[:100] }}{% if space.description|length > 100 %}...{% endif %}</p>
                         <p class="card-text"><strong>Address:</strong> {{ space.address }}</p>
-                        <p class="card-text"><strong>Price:</strong> ${{ "%.2f"|format(space.price_per_hour) }} per hour</p>
+                        <p class="card-text"><strong>Price:</strong> ₹{{ "%.2f"|format(space.price_per_hour) }} per hour</p>
                         <p class="card-text">
                             <strong>Availability:</strong> 
                             {{ space.availability_start.strftime('%H:%M') }} - {{ space.availability_end.strftime('%H:%M') }}
                         </p>
+                        {% set owner_rating = space.owner.get_average_rating() %}
+                        {% if owner_rating %}
+                            <p class="card-text">
+                                <strong>Owner Rating:</strong> 
+                                <span class="badge bg-warning">
+                                    ★ {{ "%.1f"|format(owner_rating) }} ({{ space.owner.get_total_ratings() }} ratings)
+                                </span>
+                            </p>
+                        {% endif %}
                         <a href="{{ url_for('parking.view_space', space_id=space.id) }}" class="btn btn-primary">View Details</a>
                     </div>
                     <div class="card-footer">

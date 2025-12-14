@@ -15,6 +15,7 @@ class User(db.Model, UserMixin):
     phone = db.Column(db.String(20), nullable=True)
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_main_admin = db.Column(db.Boolean, default=False, nullable=False)  # New field for main admin
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationship with parking spaces
@@ -31,6 +32,21 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         """Check if provided password matches hash"""
         return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+    
+    def get_average_rating(self):
+        """Calculate the average rating for this user as a parking space owner"""
+        # Get all bookings where this user is the owner and have feedback
+        bookings_with_feedback = [booking for booking in self.bookings_received if booking.feedback]
+        
+        if not bookings_with_feedback:
+            return None
+            
+        total_rating = sum(booking.feedback.rating for booking in bookings_with_feedback)
+        return round(total_rating / len(bookings_with_feedback), 1)
+    
+    def get_total_ratings(self):
+        """Get the total number of ratings for this user as a parking space owner"""
+        return len([booking for booking in self.bookings_received if booking.feedback])
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -68,7 +84,7 @@ class ParkingImage(db.Model):
     __tablename__ = 'parking_images'
     
     id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(500), nullable=False)
+    image_url = db.Column(db.String(300), nullable=False)
     is_primary = db.Column(db.Boolean, default=False, nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -76,7 +92,7 @@ class ParkingImage(db.Model):
     parking_space_id = db.Column(db.Integer, db.ForeignKey('parking_spaces.id'), nullable=False)
     
     def __repr__(self):
-        return f'<ParkingImage {self.image_url}>'
+        return f'<ParkingImage {self.id}>'
 
 class Booking(db.Model):
     """Model for parking space bookings"""

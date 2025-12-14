@@ -54,6 +54,7 @@ def initialize_tables():
                 phone VARCHAR(20),
                 is_verified BOOLEAN DEFAULT FALSE,
                 is_admin BOOLEAN DEFAULT FALSE,
+                is_main_admin BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')

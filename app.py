@@ -3,6 +3,7 @@ from flask_login import LoginManager
 from models.database import db
 from models.models import User
 import pymysql
+import os
 
 def create_app():
     app = Flask(__name__)
@@ -10,6 +11,14 @@ def create_app():
     # Configure for XAMPP MySQL
     app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost:3306/smart_park_system'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Configure file upload
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+    app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
+    
+    # Create upload folder if it doesn't exist
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
     
     # Initialize extensions
     db.init_app(app)

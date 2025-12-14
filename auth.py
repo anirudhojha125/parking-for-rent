@@ -11,6 +11,9 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     
+    # Check if any users exist
+    user_count = User.query.count()
+    
     form = RegistrationForm()
     if form.validate_on_submit():
         # Check if user already exists
@@ -27,12 +30,30 @@ def register():
         )
         user.set_password(form.password.data)
         
+        # First user becomes main admin
+        if user_count == 0:
+            user.is_verified = True  # Main admin is auto verified
+            user.is_admin = True
+            user.is_main_admin = True
+            flash('Registration completed successfully! You are now the main administrator.', 'success')
+        else:
+            # Other users need admin verification
+            user.is_verified = False
+            user.is_admin = False
+            user.is_main_admin = False
+            flash('Registration successful! Your account is pending administrator verification.', 'info')
+        
         # Add to database
         db.session.add(user)
         db.session.commit()
         
-        flash('Registration successful! Please log in.', 'success')
-        return redirect(url_for('auth.login'))
+        if user_count == 0:
+            # First user can log in immediately
+            login_user(user)
+            return redirect(url_for('admin.dashboard'))
+        else:
+            # Other users need to wait for verification
+            return redirect(url_for('auth.login'))
     
     return render_template('auth/register.html', form=form)
 
@@ -47,12 +68,17 @@ def login():
         user = User.query.filter_by(email=form.email.data).first()
         
         if user and user.check_password(form.password.data):
-            login_user(user)
-            flash('Logged in successfully!', 'success')
-            
-            # Redirect to next page or home
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('home'))
+            # Check if user is verified (except for main admin)
+            if user.is_main_admin or user.is_verified:
+                login_user(user)
+                flash('Logged in successfully!', 'success')
+                
+                # Redirect to next page or home
+                next_page = request.args.get('next')
+                return redirect(next_page) if next_page else redirect(url_for('home'))
+            else:
+                flash('Your account is pending administrator verification.', 'warning')
+                return render_template('auth/login.html', form=form)
         else:
             flash('Invalid email or password', 'error')
     

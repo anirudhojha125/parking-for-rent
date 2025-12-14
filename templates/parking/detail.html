@@ -8,13 +8,29 @@
         <div class="card">
             <div class="card-body">
                 <h2>{{ space.title }}</h2>
-                <p class="text-muted">Listed by {{ space.owner.username }}</p>
+                <p class="text-muted">
+                    Listed by {{ space.owner.username }}
+                    {% set owner_rating = space.owner.get_average_rating() %}
+                    {% if owner_rating %}
+                        <span class="badge bg-warning">
+                            ★ {{ "%.1f"|format(owner_rating) }} ({{ space.owner.get_total_ratings() }} ratings)
+                        </span>
+                    {% endif %}
+                </p>
                 
                 {% if space.images and space.images|length > 0 %}
-                    <!-- Placeholder for image gallery -->
-                    <div class="bg-light mb-3" style="height: 300px; display: flex; align-items: center; justify-content: center;">
-                        <span class="text-muted">Parking Space Images</span>
-                    </div>
+                    <!-- Display the primary image or first image if no primary is set -->
+                    {% set primary_image = space.images|selectattr('is_primary')|first %}
+                    {% if not primary_image %}
+                        {% set primary_image = space.images|first %}
+                    {% endif %}
+                    {% if primary_image %}
+                        <img src="{{ primary_image.image_url }}" class="img-fluid" alt="{{ space.title }}" style="width: 100%; height: 300px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-light mb-3" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                            <span class="text-muted">Parking Space Images</span>
+                        </div>
+                    {% endif %}
                 {% else %}
                     <div class="bg-light mb-3" style="height: 300px; display: flex; align-items: center; justify-content: center;">
                         <span class="text-muted">No Images Available</span>
@@ -31,7 +47,7 @@
                 {% endif %}
                 
                 <h5>Pricing</h5>
-                <p>${{ "%.2f"|format(space.price_per_hour) }} per hour</p>
+                <p>₹{{ "%.2f"|format(space.price_per_hour) }} per hour</p>
                 
                 <h5>Availability</h5>
                 <p>{{ space.availability_start.strftime('%H:%M') }} - {{ space.availability_end.strftime('%H:%M') }}</p>

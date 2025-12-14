@@ -19,12 +19,14 @@ def dashboard():
     total_spaces = ParkingSpace.query.count()
     total_bookings = Booking.query.count()
     verified_users = User.query.filter_by(is_verified=True).count()
+    unverified_users = User.query.filter_by(is_verified=False, is_main_admin=False).count()  # Exclude main admin
     
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_spaces=total_spaces,
                          total_bookings=total_bookings,
-                         verified_users=verified_users)
+                         verified_users=verified_users,
+                         unverified_users=unverified_users)
 
 @admin.route('/users')
 def list_users():
@@ -36,6 +38,12 @@ def list_users():
 def verify_user(user_id):
     """Verify a user"""
     user = User.query.get_or_404(user_id)
+    
+    # Prevent verifying main admin (they're auto-verified)
+    if user.is_main_admin:
+        flash('Main administrator is already verified.', 'error')
+        return redirect(url_for('admin.list_users'))
+    
     user.is_verified = True
     db.session.commit()
     flash(f'User {user.username} has been verified.', 'success')
@@ -45,6 +53,12 @@ def verify_user(user_id):
 def unverify_user(user_id):
     """Unverify a user"""
     user = User.query.get_or_404(user_id)
+    
+    # Prevent unverifying main admin
+    if user.is_main_admin:
+        flash('Cannot unverify the main administrator.', 'error')
+        return redirect(url_for('admin.list_users'))
+    
     user.is_verified = False
     db.session.commit()
     flash(f'User {user.username} has been unverified.', 'success')
@@ -54,6 +68,12 @@ def unverify_user(user_id):
 def make_admin(user_id):
     """Make a user an admin"""
     user = User.query.get_or_404(user_id)
+    
+    # Prevent making main admin a regular admin
+    if user.is_main_admin:
+        flash('Main administrator already has all privileges.', 'error')
+        return redirect(url_for('admin.list_users'))
+    
     user.is_admin = True
     db.session.commit()
     flash(f'User {user.username} is now an admin.', 'success')
@@ -63,10 +83,16 @@ def make_admin(user_id):
 def remove_admin(user_id):
     """Remove admin privileges from a user"""
     user = User.query.get_or_404(user_id)
-    # Prevent removing admin from current user
+    
+    # Prevent removing admin from current user or main admin
     if user.id == current_user.id:
         flash('You cannot remove admin privileges from yourself.', 'error')
         return redirect(url_for('admin.list_users'))
+    
+    if user.is_main_admin:
+        flash('Cannot remove admin privileges from main administrator.', 'error')
+        return redirect(url_for('admin.list_users'))
+    
     user.is_admin = False
     db.session.commit()
     flash(f'User {user.username} is no longer an admin.', 'success')

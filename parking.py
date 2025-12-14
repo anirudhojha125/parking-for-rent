@@ -1,9 +1,18 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, jsonify, current_app
 from flask_login import login_required, current_user
 from forms.parking import ParkingSpaceForm, BookingForm
 from forms.feedback import FeedbackForm
-from models.models import ParkingSpace, Booking, Feedback, db
+from models.models import ParkingSpace, Booking, Feedback, ParkingImage, db
 from datetime import datetime, timedelta
+import os
+from werkzeug.utils import secure_filename
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 parking = Blueprint('parking', __name__)
 
@@ -125,6 +134,37 @@ def add_space():
         )
         
         db.session.add(space)
+        db.session.flush()  # Get the space ID before committing
+        
+        # Handle image uploads
+        if form.images.data:
+            uploaded_files = request.files.getlist("images")
+            primary_set = False
+            
+            for file in uploaded_files:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Add timestamp to filename to avoid conflicts
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
+                    filename = timestamp + filename
+                    
+                    # Save file to upload folder
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    file.save(file_path)
+                    
+                    # Create relative URL for the image
+                    image_url = url_for('static', filename=f'uploads/{filename}')
+                    
+                    # Create ParkingImage record
+                    parking_image = ParkingImage(
+                        image_url=image_url,
+                        is_primary=not primary_set,  # First image is primary
+                        parking_space_id=space.id
+                    )
+                    
+                    db.session.add(parking_image)
+                    primary_set = True  # Only first image is primary
+        
         db.session.commit()
         
         flash('Parking space added successfully!', 'success')
@@ -153,6 +193,40 @@ def edit_space(space_id):
         space.availability_start = form.availability_start.data
         space.availability_end = form.availability_end.data
         space.is_active = form.is_active.data
+        
+        # Handle image uploads
+        if form.images.data:
+            uploaded_files = request.files.getlist("images")
+            
+            for file in uploaded_files:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Add timestamp to filename to avoid conflicts
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
+                    filename = timestamp + filename
+                    
+                    # Save file to upload folder
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    file.save(file_path)
+                    
+                    # Create relative URL for the image
+                    image_url = url_for('static', filename=f'uploads/{filename}')
+                    
+                    # Check if this should be the primary image
+                    is_primary = False
+                    if not space.images:  # If no images exist yet, make this primary
+                        is_primary = True
+                    elif not any(img.is_primary for img in space.images):
+                        is_primary = True  # If no primary image exists, make this one primary
+                    
+                    # Create ParkingImage record
+                    parking_image = ParkingImage(
+                        image_url=image_url,
+                        is_primary=is_primary,
+                        parking_space_id=space.id
+                    )
+                    
+                    db.session.add(parking_image)
         
         db.session.commit()
         
@@ -292,3 +366,58 @@ def submit_feedback(booking_id):
         return redirect(url_for('parking.my_bookings'))
     
     return render_template('parking/submit_feedback.html', form=form, booking=booking)
+
+@parking.route('/map')
+def map_view():
+    """Display the map with parking spaces and user location"""
+    # Get all active parking spaces with coordinates
+    spaces = ParkingSpace.query.filter(
+        ParkingSpace.is_active == True,
+        ParkingSpace.latitude.isnot(None),
+        ParkingSpace.longitude.isnot(None)
+    ).all()
+    
+    return render_template('parking/map.html', spaces=spaces)
+
+@parking.route('/api/user-location', methods=['POST'])
+@login_required
+def update_user_location():
+    """Update the current user's location"""
+    data = request.get_json()
+    
+    if 'latitude' not in data or 'longitude' not in data:
+        return jsonify({'error': 'Latitude and longitude are required'}), 400
+    
+    # In a real implementation, you would save this to the database
+    # For now, we'll just return success
+    return jsonify({'message': 'Location updated successfully'})
+
+@parking.route('/api/parking-spaces')
+def api_parking_spaces():
+    """API endpoint to get all parking spaces with coordinates"""
+    spaces = ParkingSpace.query.filter(
+        ParkingSpace.is_active == True,
+        ParkingSpace.latitude.isnot(None),
+        ParkingSpace.longitude.isnot(None)
+    ).all()
+    
+    # Convert to JSON serializable format
+    spaces_data = []
+    for space in spaces:
+        # Get owner rating
+        owner_rating = space.owner.get_average_rating()
+        owner_total_ratings = space.owner.get_total_ratings()
+        
+        spaces_data.append({
+            'id': space.id,
+            'title': space.title,
+            'address': space.address,
+            'latitude': float(space.latitude) if space.latitude else None,
+            'longitude': float(space.longitude) if space.longitude else None,
+            'price_per_hour': float(space.price_per_hour),
+            'owner_username': space.owner.username,
+            'owner_rating': float(owner_rating) if owner_rating else None,
+            'owner_total_ratings': owner_total_ratings
+        })
+    
+    return jsonify(spaces_data)
